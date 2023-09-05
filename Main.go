@@ -47,6 +47,7 @@ func main() {
 	r.HandleFunc("/favorites", createFavoriteHandler(db)).Methods("POST")
 	r.HandleFunc("/favorites/{id:[0-9]+}", updateFavoriteHandler(db)).Methods("PUT")
 	r.HandleFunc("/favorites/{id:[0-9]+}", deleteFavoriteHandler(db)).Methods("DELETE")
+	r.HandleFunc("/favorites/get-favorite", getFavoriteBySessionNameURLHandler(db)).Methods("GET")
 
 	// Wrap your router with the CORS middleware
 	http.Handle("/", corsHandler(r))
@@ -57,6 +58,43 @@ func main() {
 func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }
+func getFavoriteBySessionNameURLHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w)
+
+		// Parse query parameters
+		sessionID := r.URL.Query().Get("session_id")
+		name := r.URL.Query().Get("name")
+		imageURL := r.URL.Query().Get("image_url")
+
+		// Query the database to find the matching favorite
+		var favoriteID int
+		query := `
+            SELECT favorite_id
+            FROM favorites
+            WHERE session_id = $1 AND name = $2 AND img_url = $3`
+		err := db.QueryRow(query, sessionID, name, imageURL).Scan(&favoriteID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				// Handle the case where no matching favorite is found
+				http.NotFound(w, r)
+				return
+			}
+			// Handle other database errors
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Return the favorite ID as JSON response
+		response := struct {
+			FavoriteID int `json:"favorite_id"`
+		}{favoriteID}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}
+}
+
 func getAllFavoritesHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		enableCors(&w)
