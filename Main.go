@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 )
@@ -32,6 +33,14 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+
+	// Create a CORS middleware handler
+	corsHandler := handlers.CORS(
+		handlers.AllowedOrigins([]string{"*"}), // Change "*" to your desired origins
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"}),
+		handlers.AllowedHeaders([]string{"Content-Type"}),
+	)
+
 	// Routes
 	r.HandleFunc("/favorites/by-session/{session_id}", getFavoritesBySessionHandler(db)).Methods("GET")
 	r.HandleFunc("/favorites", getAllFavoritesHandler(db)).Methods("GET")
@@ -39,7 +48,9 @@ func main() {
 	r.HandleFunc("/favorites/{id:[0-9]+}", updateFavoriteHandler(db)).Methods("PUT")
 	r.HandleFunc("/favorites/{id:[0-9]+}", deleteFavoriteHandler(db)).Methods("DELETE")
 
-	http.Handle("/", r)
+	// Wrap your router with the CORS middleware
+	http.Handle("/", corsHandler(r))
+
 	fmt.Println("Server is running on :8080")
 	http.ListenAndServe(":8080", nil)
 }
