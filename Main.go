@@ -32,7 +32,6 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-
 	// Routes
 	r.HandleFunc("/favorites/by-session/{session_id}", getFavoritesBySessionHandler(db)).Methods("GET")
 	r.HandleFunc("/favorites", getAllFavoritesHandler(db)).Methods("GET")
@@ -44,9 +43,12 @@ func main() {
 	fmt.Println("Server is running on :8080")
 	http.ListenAndServe(":8080", nil)
 }
-
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+}
 func getAllFavoritesHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w)
 		rows, err := db.Query("SELECT * FROM favorites")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -72,6 +74,7 @@ func getAllFavoritesHandler(db *sql.DB) http.HandlerFunc {
 
 func createFavoriteHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w)
 		var fav Favorite
 		if err := json.NewDecoder(r.Body).Decode(&fav); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -94,6 +97,7 @@ func createFavoriteHandler(db *sql.DB) http.HandlerFunc {
 }
 func getFavoritesBySessionHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w)
 		vars := mux.Vars(r)
 		sessionID := vars["session_id"]
 
@@ -121,6 +125,7 @@ func getFavoritesBySessionHandler(db *sql.DB) http.HandlerFunc {
 }
 func updateFavoriteHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w)
 		vars := mux.Vars(r)
 		idStr := vars["id"]
 		id, err := strconv.Atoi(idStr)
@@ -151,6 +156,7 @@ func updateFavoriteHandler(db *sql.DB) http.HandlerFunc {
 
 func deleteFavoriteHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w)
 		vars := mux.Vars(r)
 		idStr := vars["id"]
 		id, err := strconv.Atoi(idStr)
